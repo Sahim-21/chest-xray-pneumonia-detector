@@ -35,10 +35,11 @@ h1 { font-size: 2rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
-BASE = "C:/Users/sahim/OneDrive/Documents/NNL/chest_xray"
-NORMAL_DIR   = f"{BASE}/chest_xray/test/NORMAL"
-PNEUMO_DIR   = f"{BASE}/chest_xray/test/PNEUMONIA"
-MODEL_PATH   = f"{BASE}/pneumonia_model.h5"
+BASE       = os.path.dirname(os.path.abspath(__file__))
+NORMAL_DIR = os.path.join(BASE, "chest_xray", "test", "NORMAL")
+PNEUMO_DIR = os.path.join(BASE, "chest_xray", "test", "PNEUMONIA")
+MODEL_PATH = os.path.join(BASE, "pneumonia_model.h5")
+HAS_DATA   = os.path.isdir(NORMAL_DIR) and os.path.isdir(PNEUMO_DIR)
 
 # ── Load model ─────────────────────────────────────────────────────────────────
 @st.cache_resource
@@ -47,10 +48,12 @@ def get_model():
 
 @st.cache_data
 def dataset_counts():
-    train_n = len(glob.glob(f"{BASE}/chest_xray/train/NORMAL/*.jpeg"))
-    train_p = len(glob.glob(f"{BASE}/chest_xray/train/PNEUMONIA/*.jpeg"))
-    test_n  = len(glob.glob(f"{NORMAL_DIR}/*.jpeg"))
-    test_p  = len(glob.glob(f"{PNEUMO_DIR}/*.jpeg"))
+    if not HAS_DATA:
+        return 0, 0, 0, 0
+    train_n = len(glob.glob(os.path.join(BASE, "chest_xray", "train", "NORMAL", "*.jpeg")))
+    train_p = len(glob.glob(os.path.join(BASE, "chest_xray", "train", "PNEUMONIA", "*.jpeg")))
+    test_n  = len(glob.glob(os.path.join(NORMAL_DIR, "*.jpeg")))
+    test_p  = len(glob.glob(os.path.join(PNEUMO_DIR, "*.jpeg")))
     return train_n, train_p, test_n, test_p
 
 with st.spinner("Loading model…"):
@@ -157,11 +160,10 @@ tab_diag, tab_hist, tab_about = st.tabs(["🔬 Diagnose", "📋 History", "ℹ�
 with tab_diag:
     st.markdown("### Chest X-Ray Analysis")
 
-    input_mode = st.radio(
-        "Image source",
-        ["Upload your own", "Pick a sample (Normal)", "Pick a sample (Pneumonia)"],
-        horizontal=True,
-    )
+    _modes = ["Upload your own"]
+    if HAS_DATA:
+        _modes += ["Pick a sample (Normal)", "Pick a sample (Pneumonia)"]
+    input_mode = st.radio("Image source", _modes, horizontal=True)
 
     image = None
     source_name = ""
